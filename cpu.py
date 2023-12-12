@@ -1,3 +1,6 @@
+from inputOutput import *
+import threading
+
 class Computer:
     def __init__(self, startAddress=int("200", 16)):
         self.state = 18
@@ -74,7 +77,7 @@ class Computer:
             val2 = self.registers[SR2]
 
         result = self.registers(SR1) + val2
-        self.registers(DR) = result
+        self.registers[DR] = result
 
 
 class Memory:
@@ -99,3 +102,24 @@ class Memory:
 
     def writeMemory(self):
         self.memory[self.mar] = self.mdr
+
+printLock = threading.Lock()
+
+keyboard = Keyboard()
+monitor = Monitor()
+
+keyboardRoutine = threading.Thread(target=pollKeyboard, args=[keyboard, printLock])
+monitorRoutine = threading.Thread(target=updateMonitor, args=[monitor, printLock])
+
+keyboardRoutine.daemon = True
+monitorRoutine.daemon = True
+
+keyboardRoutine.start()
+monitorRoutine.start()
+
+import time 
+while True:
+    time.sleep(1)
+    printLock.acquire()
+    print("hi")
+    printLock.release()
