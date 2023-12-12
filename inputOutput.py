@@ -1,4 +1,3 @@
-import getch
 import time
 
 class IODevice:
@@ -19,15 +18,16 @@ class IODevice:
         self.data = int(data, 2)
 
 class Monitor(IODevice):
-    def __init__(self):
+    def __init__(self, refreshRate):
         self.status = 1 << 15
         self.data = 0
+        self.delay = 1 / refreshRate
     
     def writeCharacter(self, character):
         if not (self.status & 1 << 15):
             return
 
-        self.data = ord(character)
+        self.data = character 
         self.status &= ~ (1 << 15)
 
     def printFromData(self):
@@ -50,15 +50,12 @@ class Keyboard(IODevice):
 
 def pollKeyboard(keyboard, printLock):
     while True:
-        printLock.acquire()
         character = getch.getch()
-        printLock.release()
         keyboard.writeCharacter(character)
 
-def updateMonitor(monitor, printLock):
+def updateMonitor(monitor):
     while True:
-        time.sleep(0.1)
-        printLock.acquire()
+        time.sleep(monitor.delay)
         monitor.printFromData()
-        printLock.release()
+
 
