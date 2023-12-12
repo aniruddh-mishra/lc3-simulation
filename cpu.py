@@ -1,8 +1,6 @@
-from inputOutput import *
-import threading
-
 class Computer:
-    def __init__(self, startAddress=int("200", 16)):
+    def __init__(self, monitor, keyboard, startAddress=int("200", 16)):
+        """
         self.state = 18
         self.registers = [format(0, "016b")] * 8
         self.memory = Memory() 
@@ -13,6 +11,7 @@ class Computer:
         self.ACV = False
         self.INT = False
         self.conditionCodeBits = (False, False, True)
+
         self.opCodes = {
                 "0001": state01, # ADD
                 "0101": state05, # AND
@@ -31,10 +30,14 @@ class Computer:
                 "1111": state15, # TRAP
                 "1101": state13  # reserved
                 }
+        """
+        self.monitor = monitor
+        self.keyboard = keyboard
 
     def setACV(self):
         self.ACV = self.memory.mar < int("3000", 16) or self.memory.mar > int("FE00", 16)
-
+    
+    """
     def state18(self):
         self.memory.setMAR(self.PC)
         self.PC += 1 
@@ -78,7 +81,7 @@ class Computer:
 
         result = self.registers(SR1) + val2
         self.registers[DR] = result
-
+    """
 
 class Memory:
     def __init__(self):
@@ -102,24 +105,3 @@ class Memory:
 
     def writeMemory(self):
         self.memory[self.mar] = self.mdr
-
-printLock = threading.Lock()
-
-keyboard = Keyboard()
-monitor = Monitor()
-
-keyboardRoutine = threading.Thread(target=pollKeyboard, args=[keyboard, printLock])
-monitorRoutine = threading.Thread(target=updateMonitor, args=[monitor, printLock])
-
-keyboardRoutine.daemon = True
-monitorRoutine.daemon = True
-
-keyboardRoutine.start()
-monitorRoutine.start()
-
-import time 
-while True:
-    time.sleep(1)
-    printLock.acquire()
-    print("hi")
-    printLock.release()
