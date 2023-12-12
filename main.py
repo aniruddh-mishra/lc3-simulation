@@ -1,15 +1,22 @@
 from inputOutput import *
-from cpu import *
+from computer import *
 from clock import *
 import tkinter as tk
 import threading
 
 # Computer Specs
-clockFrequency = 1 # Hz
-monitorRefreshRate = 1 # Hz
+clockFrequency = 10000 # Hz
+monitorRefreshRate = 120 # Hz
 keyboard = Keyboard()
 monitor = Monitor(monitorRefreshRate)
 computer = Computer(monitor, keyboard)
+
+# Test code
+address = int("3000", 16)
+for i in range(10000):
+    code = "0001001001100001"
+    computer.memory.memory[address] = code
+    address += 1
 
 # Set up the window
 window = tk.Tk()
