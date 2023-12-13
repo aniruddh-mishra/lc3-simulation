@@ -12,7 +12,8 @@ monitor = Monitor(monitorRefreshRate)
 computer = Computer(monitor, keyboard)
 
 # Test code
-with open("test.bin", "r") as f:
+fileName = input("Filename: ")
+with open(fileName, "r") as f:
     code = f.read().split('\n')
 address = int(code[0], 2)
 for instruction in code[1:]:
