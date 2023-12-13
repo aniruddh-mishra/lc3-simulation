@@ -5,7 +5,9 @@ def clockThread(clockFrequency, computer):
     while True:
         # TODO time the task and sleep clockTime - tie
         state = computer.nextState
-        print(state)
+        if not state:
+            time.sleep(clockTime)
+            continue
         start = time.time()
         state()
         end = time.time()

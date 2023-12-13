@@ -18,16 +18,16 @@ class Computer:
             "1100": self.state12, # JMP
             "0100": self.state04, # JSR
             "0010": self.state02, # LD
+            "1010": self.state10, # LDI
+            "0110": self.state06, # LDR
+            "1110": self.state14, # LEA
+            "1001": self.state09, # NOT
+            # "1000": self.state08, # RTI
+            "0011": self.state03, # ST
+            "1011": self.state11, # STI
+            "0111": self.state07, # STR
         }
         """
-                "1010": self.state10, # LDI
-                "0110": self.state06, # LDR
-                "1110": self.state14, # LEA
-                "1001": self.state09, # NOT
-                "1000": self.state08, # RTI
-                "0011": self.state03, # ST
-                "1011": self.state11, # STI
-                "0111": self.state07, # STR
                 "1111": self.state15, # TRAP
                 "1101": self.state13  # reserved
                 }
@@ -36,7 +36,8 @@ class Computer:
         self.keyboard = keyboard
 
     def setACV(self):
-        self.ACV = self.memory.mar < int("3000", 16) or self.memory.mar > int("FE00", 16)
+        self.ACV = self.memory.mar < int("3000", 16) 
+        # TODO or self.memory.mar >= int("FE00", 16)
    
     def setCC(self, number):
         self.conditionCodeBits = [False, False, False]
@@ -77,8 +78,8 @@ class Computer:
 
     def state32(self):
         N, Z, P = self.conditionCodeBits
-        BEN = (int(self.IR[4]) & N) or (int(self.IR[5]) & Z) or (int(self.IR[6]) & P)
-        self.nextState = self.opCodes[self.IR[0:4]]
+        self.BEN = (int(self.IR[4]) & N) or (int(self.IR[5]) & Z) or (int(self.IR[6]) & P)
+        self.nextState = self.opCodes.get(self.IR[0:4])
 
     def state01(self):
         SR1 = binaryToIntUnsigned(self.IR[7:10])
@@ -115,7 +116,7 @@ class Computer:
             self.nextState = self.state18
 
     def state22(self):
-        self.PC += binaryToIntSigned(self.IR[7:])
+        self.PC += binaryToIntSigned(self.signExtend(self.IR[7:]))
         if self.PC < 0:
             self.PC += 2**16
         self.nextState = self.state18
@@ -140,7 +141,7 @@ class Computer:
         self.nextState = self.state18
 
     def state02(self):
-        self.memory.setMAR(self.PC + binaryToIntSigned(self.IR[7:]))
+        self.memory.setMAR(intToUnsignedBinary(self.PC + binaryToIntSigned(self.IR[7:])))
         self.setACV()
         self.nextState = self.state35
 
@@ -158,9 +159,102 @@ class Computer:
             self.nextState = self.state27
 
     def state27(self):
-        self.registers[intToUnsignedBinary(self.IR[4:7])] = self.memory.mdr
+        self.registers[binaryToIntUnsigned(self.IR[4:7])] = self.memory.mdr
         self.setCC(self.memory.mdr)
         self.nextState = self.state18
+
+    def state10(self):
+        self.memory.setMAR(intToUnsignedBinary(self.PC + binaryToIntSigned(self.IR[7:])))
+        self.setACV()
+        self.nextState = self.state17
+
+    def state17(self):
+        if self.ACV:
+            # TODO make ACV FSM states
+            pass
+        else:
+            self.nextState = self.state24
+
+    def state24(self):
+        self.memory.readMemory()
+
+        if self.memory.isMemoryReady:
+            self.nextState = self.state26
+
+    def state26(self):
+        self.memory.setMAR(self.memory.mdr)
+        self.setACV()
+        self.nextState = self.state35
+
+    def state06(self):
+        base = self.registers[binaryToIntUnsigned(self.IR[7:10])]
+        base = binaryToIntUnsigned(base)
+        offset = binaryToIntSigned(self.signExtend(self.IR[10:]))
+        self.memory.setMAR(intToUnsignedBinary(base + offset))
+        self.setACV()
+        self.nextState = self.state35
+
+    def state14(self):
+        self.registers[binaryToIntUnsigned(self.IR[4:7])] = intToUnsignedBinary(self.PC + binaryToIntSigned(self.IR[7:]))
+        self.nextState = self.state18
+
+    def state09(self):
+        value = self.registers(binaryToIntUnsigned(self.IR[7:10]))
+        result = intToUnsignedBinary(~binaryToIntUnsigned(value))
+        self.registers[binaryToIntUnsigned(self.IR[4:7])] = result
+        self.nextState = self.state18
+
+    def state03(self):
+        self.memory.setMAR(intToUnsignedBinary(self.PC + binaryToIntSigned(self.IR[7:])))
+        self.setACV()
+        self.nextState = self.state23
+
+    def state23(self):
+        self.memory.mdr = self.registers[binaryToIntUnsigned(self.IR[4:7])]
+
+        if self.ACV:
+            # TODO make ACV FSM states
+            pass
+        else:
+            self.nextState = self.state16
+
+    def state16(self):
+        self.memory.writeMemory()
+
+        if self.memory.isMemoryReady:
+            self.nextState = self.state18
+
+    def state11(self):
+        self.memory.setMAR(intToUnsignedBinary(self.PC + binaryToIntSigned(self.IR[7:])))
+        self.setACV()
+        self.nextState = self.state19
+
+    def state19(self):
+        if self.ACV:
+            # TODO make ACV FSM states
+            pass
+        else:
+            self.nextState = self.state29
+
+    def state29(self):
+        self.memory.readMemory()
+
+        if self.memory.isMemoryReady:
+            self.nextState = self.state31
+
+    def state31(self):
+        self.memory.setMAR(self.memory.mdr)
+        self.setACV()
+        self.nextState = self.state23
+
+    def state07(self):
+        base = self.registers[binaryToIntUnsigned(self.IR[7:10])]
+        base = binaryToIntUnsigned(base)
+        offset = binaryToIntSigned(self.signExtend(self.IR[10:]))
+        self.memory.setMAR(intToUnsignedBinary(base + offset))
+        self.setACV()
+        self.nextState = self.state23
+
 
     def signExtend(self, binary):
         signBit = binary[0]
@@ -175,9 +269,12 @@ class Memory:
         self.isMemoryReady = False
         self.cyclesComplete = 0
         self.memoryCycles = 5
+        # TODO Fix memory mapped addresses
         self.memoryMappedIO = {
                                 int("FE00", 16): [keyboard.getStatus, keyboard.setStatus],
-                                int("FE02", 16): [keyboard.getData, keyboard.setData]
+                                int("FE02", 16): [keyboard.getData, keyboard.setData],
+                                int("FE01", 16): [monitor.getStatus, monitor.setStatus],
+                                int("FE03", 16): [monitor.getData, monitor.setData]
         }
 
     def setMAR(self, address):
@@ -185,13 +282,13 @@ class Memory:
         self.isMemoryReady = False
 
     def readMemory(self):
-        # TODO check for memory mapped I/O 
         self.cyclesComplete += 1 
         if self.cyclesComplete == self.memoryCycles:
             if self.mar not in self.memoryMappedIO.keys():
                 self.mdr = self.memory[self.mar]
             else:
                 self.mdr = self.memoryMappedIO[self.mar][0]()
+
 
             self.cyclesComplete = 0 
             self.isMemoryReady = True

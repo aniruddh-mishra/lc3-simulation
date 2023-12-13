@@ -161,3 +161,4 @@ cython_debug/
 
 # Test scripts
 test.asm
+test.bin

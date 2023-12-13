@@ -12,12 +12,12 @@ monitor = Monitor(monitorRefreshRate)
 computer = Computer(monitor, keyboard)
 
 # Test code
-address = int("3000", 16)
-code = "0001001001110001"
-computer.memory.memory[address] = code
-address += 1
-code = "0101001001110011"
-computer.memory.memory[address] = code
+with open("test.bin", "r") as f:
+    code = f.read().split('\n')
+address = int(code[0], 2)
+for instruction in code[1:]:
+    computer.memory.memory[address] = instruction
+    address += 1
 """
 for i in range(10000):
     computer.memory.memory[address] = code
@@ -41,7 +41,6 @@ def key_press(event):
     if not key:
         return
     keyboard.writeCharacter(key)
-    monitor.writeCharacter(int(keyboard.getData(), 2))
  
 window.bind('<Key>', key_press)
 

@@ -34,7 +34,11 @@ class Monitor(IODevice):
         if not (self.status & 1 << 15):
             print(chr(self.data), end="", flush=True)
         
-        self.status |= 1 << 15 
+        self.status |= 1 << 15
+
+    def setData(self, data):
+        self.data = int(data, 2)
+        self.status &= ~(1 << 15)
 
 class Keyboard(IODevice):
     def writeCharacter(self, character):
