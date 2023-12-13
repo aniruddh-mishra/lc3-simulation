@@ -13,11 +13,16 @@ computer = Computer(monitor, keyboard)
 
 # Test code
 address = int("3000", 16)
+code = "0001001001110001"
+computer.memory.memory[address] = code
+address += 1
+code = "0101001001110011"
+computer.memory.memory[address] = code
+"""
 for i in range(10000):
-    code = "0001001001100001"
     computer.memory.memory[address] = code
     address += 1
-
+"""
 # Set up the window
 window = tk.Tk()
 
