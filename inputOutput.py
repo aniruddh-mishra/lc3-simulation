@@ -19,8 +19,8 @@ class IODevice:
 
 class Monitor(IODevice):
     def __init__(self, refreshRate):
+        super().__init__()
         self.status = 1 << 15
-        self.data = 0
         self.delay = 1 / refreshRate
     
     def writeCharacter(self, character):
@@ -30,10 +30,21 @@ class Monitor(IODevice):
         self.data = character 
         self.status &= ~ (1 << 15)
 
-    def printFromData(self):
+    def printFromData(self, display):
         if not (self.status & 1 << 15):
-            print(chr(self.data), end="", flush=True)
-        
+            display.configure(state="normal")
+            try:
+                if self.data == 8:
+                    display.delete("end-2c", "end")
+                elif self.data == 13:
+                    display.insert("end", "\n")
+                else:
+                    display.insert("end", chr(self.data))
+            except:
+                display.insert("end", "☒")
+            display.configure(state="disabled")
+            display.see("end")
+
         self.status |= 1 << 15
 
     def setData(self, data):
@@ -57,9 +68,9 @@ def pollKeyboard(keyboard, printLock):
         character = getch.getch()
         keyboard.writeCharacter(character)
 
-def updateMonitor(monitor):
+def updateMonitor(monitor, display):
     while True:
         time.sleep(monitor.delay)
-        monitor.printFromData()
+        monitor.printFromData(display)
 
 

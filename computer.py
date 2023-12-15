@@ -1,9 +1,11 @@
 class Computer:
     def __init__(self, monitor, keyboard, startAddress=int("3000", 16)):
         self.state = 18
+        self.clockCount = 0
         self.registers = [intToBinarySigned(0)] * 8
-        self.memory = Memory(keyboard, monitor) 
-        self.PC = startAddress # starts at x0200 unless said otherwise
+        self.memory = Memory(keyboard, monitor)
+        self.startAddress = startAddress
+        self.PC = startAddress # TODO starts at x0200 unless said otherwise
         self.IR = intToBinarySigned(0)
         self.nextState = self.state18
         self.BEN = True
@@ -35,9 +37,15 @@ class Computer:
         self.monitor = monitor
         self.keyboard = keyboard
 
+    def smallStep(self):
+        self.clockCount += 1
+        self.nextState()
+
+    def reset(self):
+        self.__init__(self.monitor, self.keyboard, self.startAddress)
+
     def setACV(self):
-        self.ACV = self.memory.mar < int("3000", 16) 
-        # TODO or self.memory.mar >= int("FE00", 16)
+        self.ACV = self.memory.mar < int("3000", 16) or self.memory.mar >= int("FE00", 16)
    
     def setCC(self, number):
         self.conditionCodeBits = [False, False, False]
@@ -199,7 +207,7 @@ class Computer:
         self.nextState = self.state18
 
     def state09(self):
-        value = self.registers(binaryToIntUnsigned(self.IR[7:10]))
+        value = self.registers[binaryToIntUnsigned(self.IR[7:10])]
         result = intToUnsignedBinary(~binaryToIntUnsigned(value))
         self.registers[binaryToIntUnsigned(self.IR[4:7])] = result
         self.nextState = self.state18
@@ -276,7 +284,18 @@ class Memory:
                                 int("FE01", 16): [monitor.getStatus, monitor.setStatus],
                                 int("FE03", 16): [monitor.getData, monitor.setData]
         }
+        self.loadCode()
 
+    def loadCode(self):
+        return
+        fileName = input("Filename: ")
+        with open(fileName, "r") as f:
+            code = f.read().split('\n')
+        address = int(code[0], 2)
+        for instruction in code[1:]:
+            self.memory[address] = instruction
+            address += 1
+        
     def setMAR(self, address):
         self.mar = binaryToIntUnsigned(address)
         self.isMemoryReady = False
@@ -310,7 +329,7 @@ def binaryToIntUnsigned(binary):
 def binaryToIntSigned(binary):
     convertedInt = binaryToIntUnsigned(binary)
     if binary[0] == "1":
-        convertedInt -= 2**16
+        convertedInt -= 2 ** 16
     return convertedInt
 
 def intToUnsignedBinary(integer):
