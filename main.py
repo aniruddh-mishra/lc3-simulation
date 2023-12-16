@@ -5,6 +5,7 @@ import threading
 import gui
 
 # Computer Specs
+# TODO add change memory read cycles and add all settings to gui
 clockFrequency = 5000 # Hz
 monitorRefreshRate = 120 # Hz
 keyboard = Keyboard()
