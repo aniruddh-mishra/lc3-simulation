@@ -35,7 +35,10 @@ class Monitor(IODevice):
             display.configure(state="normal")
             try:
                 if self.data == 8:
-                    display.delete("end-2c", "end")
+                    if display.get("end - 2c") == "\n":
+                        display.delete("end - 1c", "end")
+                    else:
+                        display.delete("end - 2c", "end")
                 elif self.data == 13:
                     display.insert("end", "\n")
                 else:

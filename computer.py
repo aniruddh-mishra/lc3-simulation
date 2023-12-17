@@ -3,6 +3,7 @@ class Computer:
         self.state = 18
         self.clockCount = 0
         self.registers = [intToBinarySigned(0)] * 8
+        self.privelege = 0
         self.memory = Memory(keyboard, monitor)
         self.startAddress = startAddress
         self.PC = startAddress # TODO starts at x0200 unless said otherwise
@@ -49,7 +50,7 @@ class Computer:
         self.monitor.status = 1 << 15
 
     def setACV(self):
-        self.ACV = self.memory.mar < int("3000", 16) or self.memory.mar >= int("FE00", 16)
+        self.ACV = (self.memory.mar < int("3000", 16) or self.memory.mar >= int("FE00", 16)) & self.privelege
    
     def setCC(self, number):
         self.conditionCodeBits = [False, False, False]
@@ -293,7 +294,6 @@ class Memory:
         self.loadCode()
 
     def loadCode(self):
-        return
         fileName = input("Filename: ")
         with open(fileName, "r") as f:
             code = f.read().split('\n')
