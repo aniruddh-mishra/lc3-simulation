@@ -43,6 +43,10 @@ class Computer:
 
     def reset(self):
         self.__init__(self.monitor, self.keyboard, self.startAddress)
+        self.keyboard.data = 0 
+        self.keyboard.status = 0 
+        self.monitor.data = 0 
+        self.monitor.status = 1 << 15
 
     def setACV(self):
         self.ACV = self.memory.mar < int("3000", 16) or self.memory.mar >= int("FE00", 16)
@@ -277,6 +281,8 @@ class Memory:
         self.isMemoryReady = False
         self.cyclesComplete = 0
         self.memoryCycles = 5
+        self.keyboard = keyboard
+        self.monitor = monitor
         # TODO Fix memory mapped addresses
         self.memoryMappedIO = {
                                 int("FE00", 16): [keyboard.getStatus, keyboard.setStatus],
@@ -308,9 +314,17 @@ class Memory:
             else:
                 self.mdr = self.memoryMappedIO[self.mar][0]()
 
-
             self.cyclesComplete = 0 
             self.isMemoryReady = True
+
+    def getMemory(self, index):
+        if index not in self.memoryMappedIO.keys():
+            return self.memory[index]
+        else:
+            if index == int("FE02", 16):
+                return format(self.keyboard.data, "016b")
+            return self.memoryMappedIO[index][0]()
+
 
     def writeMemory(self): 
         self.cyclesComplete += 1 

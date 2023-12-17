@@ -52,7 +52,6 @@ def setup(computer, clockRoutine, quitFlag):
 
     # Buttons Setup
     buttonSection = ctk.CTkFrame(window, fg_color="transparent")
-    buttonSection.grid(row=0, sticky="news", pady=(0, 10), column=0)
 
     for i in range(3):    
        buttonSection.grid_columnconfigure(i, weight=1)
@@ -63,7 +62,7 @@ def setup(computer, clockRoutine, quitFlag):
     next = ctk.CTkImage(light_image=Image.open('next.png'), size=(25, 25))
 
     nextButton = ctk.CTkButton(buttonSection, text="Next State", image=next, command=lambda: nextState(variables, computer))
-    runButton = ctk.CTkButton(buttonSection, text="Run", image=run, command=lambda: runComputer(clockRoutine, runButton, run, pause, quitFlag, variables, computer))
+    runButton = ctk.CTkButton(buttonSection, text="Run", image=run, command=lambda: runComputer(clockRoutine, runButton, run, pause, quitFlag, variables, computer, disableEntries, disableFrames))
     # TODO Disable everything except monitor when the code is running
     stepInButton = ctk.CTkButton(buttonSection, text="Reset", image=reset, command=lambda: resetComputer(computer, variables))
 
@@ -75,7 +74,6 @@ def setup(computer, clockRoutine, quitFlag):
 
     # Computer Display Setup
     secondRow = ctk.CTkFrame(window, fg_color="transparent")
-    secondRow.grid(row=1, column=0, sticky="news")
     secondRow.grid_columnconfigure(0, weight=1)
     secondRow.grid_columnconfigure(1, weight=1)
     secondRow.grid_rowconfigure(0, weight=1)
@@ -107,7 +105,7 @@ def setup(computer, clockRoutine, quitFlag):
     display = ctk.CTkTextbox(monitors, border_color="black", border_width=2, activate_scrollbars=False)
     display.grid(row=1, pady=10, sticky="news")
 
-    display.bind('<Key>', lambda event: key_press(event, computer.keyboard))
+    display.bind('<Key>', lambda event: key_press(event, computer, variables, quitFlag))
     display.configure(state="disabled")
 
     # FSM visualization
@@ -126,7 +124,6 @@ def setup(computer, clockRoutine, quitFlag):
 
     # Memory Visualization Setup
     memoryRow = ctk.CTkFrame(window, fg_color="transparent")
-    memoryRow.grid(row=2, column=0, pady=(0, 30), sticky="news")
     memoryRow.grid_columnconfigure(0, weight=1)
     memoryRow.grid_rowconfigure(2, weight=1)
 
@@ -191,11 +188,19 @@ def setup(computer, clockRoutine, quitFlag):
     searchMemory = ctk.CTkButton(searchButtonContainer, width=30, height=30, image=search, text="", hover_color="#b6b6b6", fg_color="transparent", command=lambda: shiftMemory(memoryAddress.get(), variables, computer))
     searchMemory.grid(row=0, column=0, padx=5, sticky="news")
 
+    disableEntries = [nextButton, stepInButton, searchMemory, memoryIncrease, memoryDecrease, memoryAddress]
+    disableFrames = [*registers, *memoryCells, stateInfo]
+
     variables = {
         "registers": registers,
         "state": [state, clockCount],
         "memory": [memoryCells, memoryStart]
     }
+
+    # Place Sections
+    buttonSection.grid(row=0, sticky="news", pady=(0, 10), column=0)
+    secondRow.grid(row=1, column=0, sticky="news")
+    memoryRow.grid(row=2, column=0, pady=(0, 30), sticky="news")
 
     return display, window
 
@@ -243,22 +248,35 @@ def updateDisplay(variables, computer):
 
     for index, memoryCell in enumerate(memory[0]):
         memoryIndex = memory[1] + index
-        memoryCell.updateCell(computer.memory.memory[memoryIndex], "x" + format(memoryIndex, "04x"))
+        memoryCell.updateCell(computer.memory.getMemory(memoryIndex), "x" + format(memoryIndex, "04x"))
 
-def key_press(event, keyboard):
+def key_press(event, computer, variables, quitFlag):
     key = event.char
     if not key:
         return
-    keyboard.writeCharacter(key)
+    computer.keyboard.writeCharacter(key)
+    if quitFlag.is_set():
+        updateDisplay(variables, computer)
 
-def runComputer(clockRoutine, runButton, run, pause, quitFlag, variables, computer):
+def runComputer(clockRoutine, runButton, run, pause, quitFlag, variables, computer, entries, registers):
     if not quitFlag.is_set():
         runButton.configure(image=run, text="Run")
         quitFlag.set()
         updateDisplay(variables, computer)
+        state = "normal"
+        color = "black"
     else:
         runButton.configure(image=pause, text="Pause")
         quitFlag.clear()
         if not clockRoutine.is_alive():
             clockRoutine.start()
+        state = "disabled"
+        color = "gray"
 
+    for entry in entries:
+        entry.configure(state=state)
+
+    for register in registers:
+        attributes = register.winfo_children()
+        for label in attributes:
+            label.configure(text_color=color)

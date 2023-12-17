@@ -63,11 +63,6 @@ class Keyboard(IODevice):
         self.status &= ~(1 << 15)
         return format(self.data, "016b") # 016 means 16 digits with leading 0s 
 
-def pollKeyboard(keyboard, printLock):
-    while True:
-        character = getch.getch()
-        keyboard.writeCharacter(character)
-
 def updateMonitor(monitor, display):
     while True:
         time.sleep(monitor.delay)
