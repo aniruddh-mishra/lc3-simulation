@@ -1,4 +1,5 @@
 import customtkinter as ctk
+from tkinter.filedialog import askopenfilename
 from PIL import Image
 import time 
 
@@ -46,6 +47,95 @@ class MemoryCell(Register):
 def setup(computer, clockRoutine, quitFlag):
     window = ctk.CTk()
     window.title("LC3 Simulator")
+    monitorValue, computerPage, navBarComputerPage, disableEntries = setupComputerPage(computer, clockRoutine, quitFlag, window)
+    codePage, navBarCodePage = setupCodePage(window)
+
+    # Setup Switch Button
+    computer = ctk.CTkImage(light_image=Image.open('computer.png'), size=(25, 25))
+    code = ctk.CTkImage(light_image=Image.open('code.png'), size=(25, 25))
+
+    switchToComputer = ctk.CTkButton(navBarCodePage, image=computer, text="Simulation", command=lambda: computerPage.tkraise())
+    switchToComputer.grid(row=0, column=2, padx=10, pady=(20, 0))
+
+    switchToCode = ctk.CTkButton(navBarComputerPage, text="Code", command=lambda: codePage.tkraise(), image=code, )
+    switchToCode.grid(row=0, column=5, padx=10, pady=(20, 0))
+    
+    switches = [switchToCode, switchToComputer]
+
+    for switch in switches:
+        switch.configure(fg_color="transparent", hover_color="#b6b6b6", text_color="black", compound="top", width=80, anchor="center")
+    
+    disableEntries.append(switchToCode)
+
+    return monitorValue, window
+
+def setupCodePage(window):
+    window = ctk.CTkFrame(window, fg_color="transparent")
+    window.place(relheight=1, relwidth=1)
+
+    # Button Setup
+    buttonSection = ctk.CTkFrame(window, fg_color="transparent")
+    buttonSection.pack()
+    
+    for i in range(3):    
+       buttonSection.grid_columnconfigure(i, weight=1)
+
+    file = ctk.CTkImage(light_image=Image.open('folder.png'), size=(25, 25))
+    assemble = ctk.CTkImage(light_image=Image.open('wrench.png'), size=(25, 25))
+
+    loadFileButton = ctk.CTkButton(buttonSection, image=file, text="Load Code", command=lambda: loadFile(code))
+    assembleButton = ctk.CTkButton(buttonSection, image=assemble, text="Assemble", command=lambda: assembleCode(code))
+
+    buttons = [loadFileButton, assembleButton]
+
+    for index, button in enumerate(buttons):
+        button.configure(fg_color="transparent", hover_color="#b6b6b6", text_color="black", compound="top", width=80, anchor="center")
+        button.grid(row=0, column=index, padx=10, pady=(20, 0))
+
+    code = []
+
+    return window, buttonSection
+
+def openFile(code):
+    if code:
+        fileType = ("Binary File","*.bin"),("Assembly File","*.asm")
+    else:
+        fileType = ("Object File", "*.obj")
+
+    return askopenfilename(title="Select File", filetypes=fileType)
+
+def loadFile(code):
+    filePath = openFile(True)
+    code.clear()
+    code.append(filePath)
+    with open(filePath, "rb") as f:
+        code.extend(f.read().split('\n'))
+
+def assembleCode(code):
+    filePath = code[0]
+    previousFileType = filePath[-4:]
+    filePath = filePath[0:-4] + ".obj"
+    if previousFileType == ".asm":
+        pass
+        # TODO compile to binary 
+    else:
+        binary = code[1:]
+    
+    machineCodeArray = []
+    for line in binary:
+        if not line:
+            continue
+        machineCodeArray.extend([int(line[0:8], 2), int(line[8:], 2)])
+
+    machineCodeArray = bytearray(machineCodeArray)
+
+    with open(filePath, "wb") as f:
+        f.write(machineCodeArray)
+
+
+def setupComputerPage(computer, clockRoutine, quitFlag, window):
+    window = ctk.CTkFrame(window, fg_color="transparent")
+    window.place(relheight=1, relwidth=1)
     window.grid_rowconfigure(1, weight=1)
     window.grid_rowconfigure(2, weight=2)
     window.grid_columnconfigure(0, weight=1)
@@ -53,20 +143,25 @@ def setup(computer, clockRoutine, quitFlag):
     # Buttons Setup
     buttonSection = ctk.CTkFrame(window, fg_color="transparent")
 
-    for i in range(3):    
+    for i in range(6):    
        buttonSection.grid_columnconfigure(i, weight=1)
 
     reset = ctk.CTkImage(light_image=Image.open('reset.png'), size=(25, 25))
     run = ctk.CTkImage(light_image=Image.open('play.png'), size=(25, 25))
     pause = ctk.CTkImage(light_image=Image.open('pause.png'), size=(25, 25))
     next = ctk.CTkImage(light_image=Image.open('next.png'), size=(25, 25))
+    forward = ctk.CTkImage(light_image=Image.open('forward.png'), size=(25, 25))
+    file = ctk.CTkImage(light_image=Image.open('folder.png'), size=(25, 25))
 
     nextButton = ctk.CTkButton(buttonSection, text="Next State", image=next, command=lambda: nextState(variables, computer))
     runButton = ctk.CTkButton(buttonSection, text="Run", image=run, command=lambda: runComputer(clockRoutine, runButton, run, pause, quitFlag, variables, computer, disableEntries, disableFrames))
     # TODO Disable everything except monitor when the code is running
-    stepInButton = ctk.CTkButton(buttonSection, text="Reset", image=reset, command=lambda: resetComputer(computer, variables))
+    resetButton = ctk.CTkButton(buttonSection, text="Reset", image=reset, command=lambda: resetComputer(computer, variables))
+    forwardButton = ctk.CTkButton(buttonSection, text="Next Step", image=forward, command=lambda: print("Working on it"))
+    # TODO
+    loadFileButton = ctk.CTkButton(buttonSection, image=file, text="Load Code", command=loadCode)
 
-    buttons = [nextButton, runButton, stepInButton]
+    buttons = [nextButton, runButton, forwardButton, resetButton, loadFileButton]
 
     for index, button in enumerate(buttons):
         button.configure(width=80, anchor="center", fg_color="transparent", hover_color="#b6b6b6", text_color="black", compound="top")
@@ -188,7 +283,7 @@ def setup(computer, clockRoutine, quitFlag):
     searchMemory = ctk.CTkButton(searchButtonContainer, width=30, height=30, image=search, text="", hover_color="#b6b6b6", fg_color="transparent", command=lambda: shiftMemory(memoryAddress.get(), variables, computer))
     searchMemory.grid(row=0, column=0, padx=5, sticky="news")
 
-    disableEntries = [nextButton, stepInButton, searchMemory, memoryIncrease, memoryDecrease, memoryAddress]
+    disableEntries = [buttons[0], *buttons[2:], searchMemory, memoryIncrease, memoryDecrease, memoryAddress]
     disableFrames = [*registers, *memoryCells, stateInfo]
 
     variables = {
@@ -202,7 +297,12 @@ def setup(computer, clockRoutine, quitFlag):
     secondRow.grid(row=1, column=0, sticky="news")
     memoryRow.grid(row=2, column=0, pady=(0, 30), sticky="news")
 
-    return display, window
+    return display, window, buttonSection, disableEntries
+
+def loadCode(computer):
+    file = openFile()
+    with open(file, "rb") as f:
+        print(f.read())
 
 def shiftMemory(address, variables, computer):
     try:

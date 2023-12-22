@@ -294,6 +294,7 @@ class Memory:
         self.loadCode()
 
     def loadCode(self):
+        return
         fileName = input("Filename: ")
         with open(fileName, "r") as f:
             code = f.read().split('\n')
