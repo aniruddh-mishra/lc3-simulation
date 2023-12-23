@@ -72,11 +72,13 @@ def setup(computer, clockRoutine, quitFlag):
 def setupCodePage(window):
     window = ctk.CTkFrame(window, fg_color="transparent")
     window.place(relheight=1, relwidth=1)
+    window.grid_columnconfigure(0, weight=1)
+    window.grid_rowconfigure(1, weight=1)
 
     # Button Setup
     buttonSection = ctk.CTkFrame(window, fg_color="transparent")
-    buttonSection.pack()
-    
+    buttonSection.grid(row=0, column=0, sticky="news", pady=(0, 10))
+
     for i in range(3):    
        buttonSection.grid_columnconfigure(i, weight=1)
 
@@ -96,11 +98,11 @@ def setupCodePage(window):
 
     return window, buttonSection
 
-def openFile(code):
+def openFile(code=False):
     if code:
-        fileType = ("Binary File","*.bin"),("Assembly File","*.asm")
+        fileType = ("Binary File","*.bin"), ("Assembly File","*.asm")
     else:
-        fileType = ("Object File", "*.obj")
+        fileType = ("Object File", "*.obj"), 
 
     return askopenfilename(title="Select File", filetypes=fileType)
 
@@ -108,7 +110,7 @@ def loadFile(code):
     filePath = openFile(True)
     code.clear()
     code.append(filePath)
-    with open(filePath, "rb") as f:
+    with open(filePath, "r") as f:
         code.extend(f.read().split('\n'))
 
 def assembleCode(code):
@@ -119,18 +121,12 @@ def assembleCode(code):
         pass
         # TODO compile to binary 
     else:
-        binary = code[1:]
-    
-    machineCodeArray = []
-    for line in binary:
-        if not line:
-            continue
-        machineCodeArray.extend([int(line[0:8], 2), int(line[8:], 2)])
+        binary = "".join(code[1:])
 
-    machineCodeArray = bytearray(machineCodeArray)
-
+    machineCode = int(binary, 2).to_bytes(len(binary) // 8, byteorder='big')
+   
     with open(filePath, "wb") as f:
-        f.write(machineCodeArray)
+        f.write(machineCode)
 
 
 def setupComputerPage(computer, clockRoutine, quitFlag, window):
@@ -159,7 +155,7 @@ def setupComputerPage(computer, clockRoutine, quitFlag, window):
     resetButton = ctk.CTkButton(buttonSection, text="Reset", image=reset, command=lambda: resetComputer(computer, variables))
     forwardButton = ctk.CTkButton(buttonSection, text="Next Step", image=forward, command=lambda: print("Working on it"))
     # TODO
-    loadFileButton = ctk.CTkButton(buttonSection, image=file, text="Load Code", command=loadCode)
+    loadFileButton = ctk.CTkButton(buttonSection, image=file, text="Load Code", command=lambda: loadCode(computer, variables))
 
     buttons = [nextButton, runButton, forwardButton, resetButton, loadFileButton]
 
@@ -299,10 +295,28 @@ def setupComputerPage(computer, clockRoutine, quitFlag, window):
 
     return display, window, buttonSection, disableEntries
 
-def loadCode(computer):
-    file = openFile()
+def loadCode(computer, variables):
+    file = openFile(False)
     with open(file, "rb") as f:
-        print(f.read())
+        data = f.read()
+        machineCode = int.from_bytes(data, "big")
+        bitLength = len(data) * 8
+        binary = format(machineCode, "0" + str(bitLength) + "b")
+
+    binaryCode = []
+    for chunk in range(bitLength // 16):
+        start = chunk * 16
+        binaryCode.append(binary[start:start+16])
+    
+    startAddress = int(binaryCode[0], 2)
+    code = binaryCode[1:]
+    computer.PC = startAddress
+    variables["memory"][1] = startAddress
+
+    for index, line in enumerate(code):
+        computer.memory.memory[startAddress + index] = line
+
+    updateDisplay(variables, computer)
 
 def shiftMemory(address, variables, computer):
     try:
@@ -362,6 +376,7 @@ def runComputer(clockRoutine, runButton, run, pause, quitFlag, variables, comput
     if not quitFlag.is_set():
         runButton.configure(image=run, text="Run")
         quitFlag.set()
+        variables["memory"][1] = computer.PC
         updateDisplay(variables, computer)
         state = "normal"
         color = "black"
