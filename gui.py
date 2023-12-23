@@ -387,9 +387,9 @@ def runComputer(clockRoutine, runButton, run, pause, quitFlag, variables, comput
     if not quitFlag.is_set():
         runButton.configure(image=run, text="Run")
         quitFlag.set()
-        if computer.PC < variables["memory"][1] and computer.PC >= variables["memory"][1] + 12:
+        if computer.PC < variables["memory"][1] or computer.PC >= variables["memory"][1] + 12:
             variables["memory"][1] = computer.PC
-            updateDisplay(variables, computer)
+        updateDisplay(variables, computer)
         state = "normal"
         color = "black"
     else:
