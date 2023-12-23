@@ -43,6 +43,12 @@ class MemoryCell(Register):
     def updateCell(self, value, address):
         self.name = address
         super().update(value)
+
+    def setActive(self):
+        self.configure(fg_color="#88f292")
+    
+    def setInactive(self):
+        self.configure(fg_color="transparent")
             
 def setup(computer, clockRoutine, quitFlag):
     window = ctk.CTk()
@@ -341,6 +347,7 @@ def shiftMemoryUp(up, variables, computer):
 
 def resetComputer(computer, variables):
     computer.reset()
+    variables["memory"][1] = computer.PC
     updateDisplay(variables, computer)
 
 def nextState(variables, computer):
@@ -363,6 +370,10 @@ def updateDisplay(variables, computer):
     for index, memoryCell in enumerate(memory[0]):
         memoryIndex = memory[1] + index
         memoryCell.updateCell(computer.memory.getMemory(memoryIndex), "x" + format(memoryIndex, "04x"))
+        if memory[1] + index == computer.PC:
+            memoryCell.setActive()
+        else:
+            memoryCell.setInactive()
 
 def key_press(event, computer, variables, quitFlag):
     key = event.char
@@ -376,8 +387,9 @@ def runComputer(clockRoutine, runButton, run, pause, quitFlag, variables, comput
     if not quitFlag.is_set():
         runButton.configure(image=run, text="Run")
         quitFlag.set()
-        variables["memory"][1] = computer.PC
-        updateDisplay(variables, computer)
+        if computer.PC < variables["memory"][1] and computer.PC >= variables["memory"][1] + 12:
+            variables["memory"][1] = computer.PC
+            updateDisplay(variables, computer)
         state = "normal"
         color = "black"
     else:
