@@ -19,9 +19,11 @@ class Register(ctk.CTkFrame):
             self.grid_columnconfigure(column, weight=1)
             attribute.configure(font=("Arial", 13, "bold"), height=5, width=40)
             attribute.grid(row=0, padx=5, column=column, pady=7)
+            attribute.bind("<ButtonRelease-1>", lambda event: editRegister(self))
 
         self.update(value)
         self.grid(row=position, sticky="news")
+        self.bind("<ButtonRelease-1>", lambda event: editRegister(self))
 
     def update(self, value):
         self.binary = value
@@ -50,6 +52,12 @@ class MemoryCell(Register):
     def setInactive(self):
         self.configure(fg_color="transparent")
             
+def editRegister(register):
+    xLocation = register.winfo_rootx()
+    yLocation = register.winfo_rooty()
+    entryBox = ctk.CTkEntry(register, fg_color="transparent")
+    entryBox.place(relx=0.1, rely=0)
+
 def setup(computer, clockRoutine, quitFlag):
     window = ctk.CTk()
     window.title("LC3 Simulator")
@@ -116,10 +124,14 @@ def loadFile(code):
     filePath = openFile(True)
     code.clear()
     code.append(filePath)
+    if not filePath:
+        return
     with open(filePath, "r") as f:
         code.extend(f.read().split('\n'))
 
 def assembleCode(code):
+    if not code:
+        return
     filePath = code[0]
     previousFileType = filePath[-4:]
     filePath = filePath[0:-4] + ".obj"
@@ -158,8 +170,8 @@ def setupComputerPage(computer, clockRoutine, quitFlag, window):
     nextButton = ctk.CTkButton(buttonSection, text="Next State", image=next, command=lambda: nextState(variables, computer))
     runButton = ctk.CTkButton(buttonSection, text="Run", image=run, command=lambda: runComputer(clockRoutine, runButton, run, pause, quitFlag, variables, computer, disableEntries, disableFrames))
     # TODO Disable everything except monitor when the code is running
-    resetButton = ctk.CTkButton(buttonSection, text="Reset", image=reset, command=lambda: resetComputer(computer, variables))
-    forwardButton = ctk.CTkButton(buttonSection, text="Next Step", image=forward, command=lambda: print("Working on it"))
+    resetButton = ctk.CTkButton(buttonSection, text="Reset", image=reset, command=lambda: resetComputer(computer, variables, display))
+    forwardButton = ctk.CTkButton(buttonSection, text="Next Step", image=forward, command=lambda: nextStep(variables, computer))
     # TODO
     loadFileButton = ctk.CTkButton(buttonSection, image=file, text="Load Code", command=lambda: loadCode(computer, variables))
 
@@ -303,6 +315,8 @@ def setupComputerPage(computer, clockRoutine, quitFlag, window):
 
 def loadCode(computer, variables):
     file = openFile(False)
+    if not file:
+        return
     with open(file, "rb") as f:
         data = f.read()
         machineCode = int.from_bytes(data, "big")
@@ -345,10 +359,21 @@ def shiftMemoryUp(up, variables, computer):
 
     updateDisplay(variables, computer)
 
-def resetComputer(computer, variables):
+def resetComputer(computer, variables, display):
     computer.reset()
     variables["memory"][1] = computer.PC
     updateDisplay(variables, computer)
+    # TODO Clear display
+
+def nextStep(variables, computer):
+    computer.smallStep()
+    while True:
+        if computer.nextState.__name__ == "state18":
+            if computer.PC < variables["memory"][1] or computer.PC >= variables["memory"][1] + 12:
+                variables["memory"][1] = computer.PC
+            updateDisplay(variables, computer)
+            break
+        computer.smallStep()
 
 def nextState(variables, computer):
     computer.smallStep()

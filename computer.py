@@ -4,6 +4,7 @@ class Computer:
         self.clockCount = 0
         self.registers = [intToBinarySigned(0)] * 8
         self.privelege = 0
+        self.priorityLevel = 0
         self.memory = Memory(keyboard, monitor)
         self.startAddress = startAddress
         self.PC = startAddress # TODO starts at x0200 unless said otherwise
@@ -13,6 +14,8 @@ class Computer:
         self.ACV = False
         self.INT = False
         self.conditionCodeBits = [False, False, True]
+        self.savedSSP = int("3000", 16)
+        # TODO self.savedUSP
 
         self.opCodes = {
             "0001": self.state01, # ADD
@@ -29,10 +32,10 @@ class Computer:
             "0011": self.state03, # ST
             "1011": self.state11, # STI
             "0111": self.state07, # STR
+            "1111": self.state15, # TRAP
         }
         """
-                "1111": self.state15, # TRAP
-                "1101": self.state13  # reserved
+                                "1101": self.state13  # reserved
                 }
         """
         self.monitor = monitor
@@ -268,10 +271,46 @@ class Computer:
         self.setACV()
         self.nextState = self.state23
 
+    def state15(self):
+        self.table = format(0, "08b")
+        self.PC += 1 
+        self.memory.mdr = self.getPSR()
+        self.nextState = self.state47
+
+    def state47(self):
+        self.vector = self.IR[8:] 
+        if self.privelege:
+            self.nextState = self.state45
+        else:
+            self.nextState = self.state37
+        self.privelege = 0
+
+    def state45(self):
+        self.savedUSP = self.registers[5]
+        self.registers[5] = self.savedSSP
+        self.nextState = self.state37 
+
+    def state37(self):
+        self.registers[5] -= 1
+        self.memory.setMAR(intToUnsignedBinary(self.registers[5]))
+        self.nextState = self.state41
+
+    def state41(self):
+        self.memory.readMemory()
+
+        if self.memory.isMemoryReady:
+            self.nextState = self.state43
+
+    def state43(self):
+        self.memory.mdr = self.PC - 1
 
     def signExtend(self, binary):
         signBit = binary[0]
         return signBit * (16 - len(binary)) + binary
+    
+    def getPSR(self):
+        nzp = str(int(self.conditionCodeBits[0])) + str(int(self.conditionCodeBits[1])) + str(int(self.conditionCodeBits[2]))
+        return str(self.privelege) + "0" * 4 + format(self.priorityLevel, "03b") + "0" * 5 + nzp
 
     
 class Memory:
